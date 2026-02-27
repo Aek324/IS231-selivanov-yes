@@ -1,48 +1,57 @@
 <?php
-/**
- * @param string $email 
- * @return string 
- * @throws InvalidArgumentException 
- */
-function validateEmail(string $email): string
-{
-    if (empty(trim($email))) {
-        throw new InvalidArgumentException("Некорректный формат email: адрес не может быть пустым");
-    }
-    
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new InvalidArgumentException("Некорректный формат email: '{$email}' не является валидным адресом");
-    }
-    
-    return "Email корректен";
-}
+require_once __DIR__ . '/vendor/autoload.php';
 
+use App\Core\Event;
+use App\Core\Dispatcher;
 
-$testCases = [
-    "example@example.com",      
-    "not-an-email",             
-    "",                         
-    "user.name+tag@domain.co",  
-    "@invalid.com",             
-    "invalid@.com",             
-];
+use App\Modules\LoggerModule;
+use App\Modules\EmailModule;
+use App\Modules\AnalyticsModule;
 
-echo "=== Тестирование функции validateEmail ===\n\n";
+// 1. Инициализация ядра
+$dispatcher = new Dispatcher();
 
-foreach ($testCases as $testEmail) {
-    try {
-        $result = validateEmail($testEmail);
-        echo "✓ Вход: '{$testEmail}'\n";
-        echo "  Результат: {$result}\n\n";
+// 2. Загрузка конфигурации
+$config = require __DIR__ .'/Config/config.php';
+
+// 3. Динамическая регистрация подписчиков на основе настроек
+foreach ($config as $eventName => $subscriberClasses) {
+    foreach ($subscriberClasses as $class) {
+        // Создаем экземпляр модуля
+        $subscriber = new $class();
         
-    } catch (InvalidArgumentException $e) {
-        echo "✗ Вход: '{$testEmail}'\n";
-        echo "  Ошибка: " . $e->getMessage() . "\n\n";
-        
-    } catch (Exception $e) {
-        echo "✗ Вход: '{$testEmail}'\n";
-        echo "  Неожиданная ошибка: " . $e->getMessage() . "\n\n";
+        // Подписываем метод handle этого модуля на событие
+        $dispatcher->subscribe($eventName, [$subscriber, 'handle']);
     }
 }
 
-echo "=== Тестирование завершено ===\n";
+// Тестовые сценарии исполнения
+echo "=== СИСТЕМА ЗАПУЩЕНА ===\n";
+
+// --- Сценарий 1: Регистрация пользователя ---
+echo "\n--- Сценарий: Регистрация пользователя ---\n";
+$registerEvent = new Event('user.registered', [
+    'user_id' => 101,
+    'email' => 'ivan@example.com',
+    'name' => 'Ivan'
+]);
+$dispatcher->dispatch($registerEvent);
+
+// --- Сценарий 2: Оплата заказа ---
+echo "\n--- Сценарий: Оплата заказа ---\n";
+$payEvent = new Event('order.paid', [
+    'order_id' => 555,
+    'email' => 'ivan@example.com',
+    'amount' => 1500
+]);
+$dispatcher->dispatch($payEvent);
+
+// --- Сценарий 3: Ошибка системы ---
+echo "\n--- Сценарий: Ошибка системы ---\n";
+$errorEvent = new Event('system.error', [
+    'message' => 'Database connection failed',
+    'code' => 500
+]);
+$dispatcher->dispatch($errorEvent);
+
+echo "\n=== РАБОТА ЗАВЕРШЕНА ===\n";
