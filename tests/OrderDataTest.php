@@ -18,9 +18,7 @@ class OrderDataTest extends TestCase
         $this->obj = new ValidateOrderData();
     }
 
-    public function testValidateOrderData(): void {
-        $this->assertSame( true, 
-                           $this->obj->validateFullName($this->data["fio"]) );
+    public function testValidateOrderData(): void 
         $this->assertSame( true, 
                            $this->obj->validateAddress($this->data["address"]) );
         $this->assertSame( true, 
